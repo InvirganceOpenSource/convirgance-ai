@@ -165,17 +165,6 @@ public class OllamaChatModel implements ChatModel
     {
         this.options = options;
     }
-
-    private URL getUrl(String path)
-    {
-        try
-        {
-            if(!path.startsWith("/")) path = "/" + path;
-            
-            return new URI(engine.getBaseUrl() + path).toURL();
-        }
-        catch(URISyntaxException | MalformedURLException e) { throw new ConvirganceException(e); }
-    }
     
     private JSONObject constructMessage(JSONObject parameters)
     {
