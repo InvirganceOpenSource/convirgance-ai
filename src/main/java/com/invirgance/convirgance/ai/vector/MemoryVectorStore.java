@@ -35,7 +35,7 @@ public class MemoryVectorStore
     public static double computeDotProduct(JSONArray<Double> a, JSONArray<Double> b)
     {
         var products = new double[a.size()];
-        var sum = 0;
+        var sum = 0.0;
         
         if(a.size() != b.size()) throw new ConvirganceException("Vector size mismatches: " + a.size() + " != " + b.size());
         
@@ -51,7 +51,7 @@ public class MemoryVectorStore
     public static double computeMagnitude(JSONArray<Double> vector)
     {
         var squared = new double[vector.size()];
-        var sum = 0;
+        var sum = 0.0;
         
         for(int i=0; i<vector.size(); i++)
         {
