@@ -24,17 +24,11 @@
 package com.invirgance.convirgance.ai;
 
 import com.invirgance.convirgance.ConvirganceException;
-import com.invirgance.convirgance.input.JSONInput;
+import com.invirgance.convirgance.ai.engines.Ollama;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
-import com.invirgance.convirgance.source.Source;
 import com.invirgance.convirgance.transform.IdentityTransformer;
 import com.invirgance.convirgance.wiring.annotation.Wiring;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -51,7 +45,6 @@ import java.util.Map;
 @Wiring("ollama-model")
 public class OllamaChatModel implements ChatModel
 {
-    private String baseUrl = "http://localhost:11434/api";
     private boolean stream = false; // Default to not stream
     private boolean raw = false;
     
@@ -64,16 +57,22 @@ public class OllamaChatModel implements ChatModel
     private List<Object> tools;
     private Map options;
     
+    private Ollama engine = new Ollama();
     private OllamaToolEncoder encoder;
+
+    public Ollama getEngine()
+    {
+        return engine;
+    }
 
     public String getBaseUrl()
     {
-        return baseUrl;
+        return engine.getBaseUrl();
     }
 
     public void setBaseUrl(String baseUrl)
     {
-        this.baseUrl = baseUrl;
+        this.engine.setBaseUrl(baseUrl);
     }
 
     public boolean getStream()
@@ -173,7 +172,7 @@ public class OllamaChatModel implements ChatModel
         {
             if(!path.startsWith("/")) path = "/" + path;
             
-            return new URI(baseUrl + path).toURL();
+            return new URI(engine.getBaseUrl() + path).toURL();
         }
         catch(URISyntaxException | MalformedURLException e) { throw new ConvirganceException(e); }
     }
@@ -182,27 +181,27 @@ public class OllamaChatModel implements ChatModel
     {
         var message = new JSONObject();
         var messages = new JSONArray();
-        var latest = new JSONObject();
         
         message.put("model", model);
         message.put("stream", stream);
         
         if(tools != null) 
         {
-            latest.put("role", "user");
-            latest.put("content", template(chat, parameters));
-            messages.add(latest);
+            if(system != null) messages.add(engine.constructMessage(template(system, parameters), Ollama.Role.system));
+
+            messages.add(engine.constructMessage(template(chat, parameters), Ollama.Role.user));
             message.put("messages", messages);
             message.put("tools", encoder.getDescriptors());
         }
         else
         {
             message.put("prompt", template(chat, parameters));
+            
+            if(raw) message.put("raw", raw);
+            if(system != null) message.put("system", template(system, parameters));
+            if(template != null) message.put("template", template(template, parameters));
         }
         
-        if(raw) message.put("raw", raw);
-        if(system != null) message.put("system", template(system, parameters));
-        if(template != null) message.put("template", template(template, parameters));
         if(options != null) message.put("options", options);
         
         for(Advisor advisor : advisors) advisor.before(parameters, message);
@@ -212,201 +211,73 @@ public class OllamaChatModel implements ChatModel
     
     private Iterable<JSONObject> getBinding(JSONObject parameters, JSONArray<JSONObject> toolCalls)
     {
-        var api = "chat";
         var message = constructMessage(parameters);
         var messages = message.getJSONArray("messages");
-        var source = new OllamaSource(api, message);
-        var input = new JSONInput();
         
-        JSONObject result;
-       
         for(var call : toolCalls)
         {
-            result = new JSONObject();
-            
-            result.put("role", "tool");
-            result.put("content", encoder.execute(call));
-            messages.add(result);
+            messages.add(engine.constructMessage(encoder.execute(call), Ollama.Role.tool));
         }
         
-        return new IdentityTransformer() {
-            private Iterator<JSONObject> replacement;
-
-            @Override
-            public Iterator<JSONObject> transform(Iterator<JSONObject> iterator) throws ConvirganceException
-            {
-                var original = IdentityTransformer.super.transform(iterator);
-                
-                return new Iterator<JSONObject>() {
-                    @Override
-                    public boolean hasNext()
-                    {
-                        var iterator = (replacement != null) ? replacement : original;
-                        
-                        return iterator.hasNext();
-                    }
-
-                    @Override
-                    public JSONObject next()
-                    {
-                        var iterator = (replacement != null) ? replacement : original;
-                        
-                        return iterator.next();
-                    }
-                };
-            }
-            
-            @Override
-            public JSONObject transform(JSONObject record) throws ConvirganceException
-            {
-                for(Advisor advisor : advisors) advisor.after(parameters, record);
-                
-                if(record.containsKey("message") && record.getJSONObject("message").containsKey("tool_calls"))
-                {
-                    replacement = getBinding(parameters, record.getJSONObject("message").getJSONArray("tool_calls")).iterator();
-                    
-                    return replacement.next();
-                }
-                
-                return record;
-            }
-        }.transform(input.read(source));
+        return new PostProcessor(parameters).transform(engine.chat(message));
     }
     
     @Override
     public Iterable<JSONObject> getBinding(JSONObject parameters)
     {
-        var api = (tools != null) ? "chat" : "generate";
         var message = constructMessage(parameters);
-        var source = new OllamaSource(api, message);
-        var input = new JSONInput();
-        var cursor = input.read(source);
+        var cursor = (tools != null) ? engine.chat(message) : engine.generate(message);
         
-        return new IdentityTransformer() {
-            private Iterator<JSONObject> replacement;
-
-            @Override
-            public Iterator<JSONObject> transform(Iterator<JSONObject> iterator) throws ConvirganceException
-            {
-                var original = IdentityTransformer.super.transform(iterator);
-                
-                return new Iterator<JSONObject>() {
-                    @Override
-                    public boolean hasNext()
-                    {
-                        var iterator = (replacement != null) ? replacement : original;
-                        
-                        return iterator.hasNext();
-                    }
-
-                    @Override
-                    public JSONObject next()
-                    {
-                        var iterator = (replacement != null) ? replacement : original;
-                        
-                        return iterator.next();
-                    }
-                };
-            }
-            
-            @Override
-            public JSONObject transform(JSONObject record) throws ConvirganceException
-            {
-                for(Advisor advisor : advisors) advisor.after(parameters, record);
-                
-                if(record.containsKey("message") && record.getJSONObject("message").containsKey("tool_calls"))
-                {
-                    replacement = getBinding(parameters, record.getJSONObject("message").getJSONArray("tool_calls")).iterator();
-                    
-                    return replacement.next();
-                }
-                
-                return record;
-            }
-        }.transform(cursor);
+        return new PostProcessor(parameters).transform(cursor);
     }
     
-    private class OllamaSource implements Source
+    private class PostProcessor implements IdentityTransformer 
     {
-        private String api;
-        private JSONObject message;
+        private Iterator<JSONObject> replacement;
+        private JSONObject parameters;
 
-        public OllamaSource(String api, JSONObject message)
+        public PostProcessor(JSONObject parameters)
         {
-            this.api = api;
-            this.message = message;
-        }
-        
-        private HttpURLConnection getConnection()
-        {
-            var url = getUrl(api);
-            
-            try
-            {
-                return (HttpURLConnection)url.openConnection();
-            }
-            catch(IOException e) { throw new ConvirganceException(e); }
-        }
-        
-        private byte[] getData()
-        {
-            try
-            {
-                return message.toString().getBytes("UTF-8");
-            }
-            catch(UnsupportedEncodingException e) { throw new ConvirganceException(e); }
-        }
-        
-        private void handleError(InputStream in)
-        {
-            if(in == null) return;
-            
-            var out = new ByteArrayOutputStream();
-            var data = new byte[4096];
-            
-            String result;
-            int count;
-            
-            try
-            {
-                while((count = in.read(data)) > 0)
-                {
-                    out.write(data, 0, count);
-                }
-                
-                result = new String(out.toByteArray(), "UTF-8");
-                
-                System.out.println(result);
-                
-                throw new ConvirganceException("Error accessing " + api + ":\n" + result);
-            }
-            catch(IOException e) { throw new ConvirganceException(e); }
+            this.parameters = parameters;
         }
         
         @Override
-        public InputStream getInputStream()
+        public Iterator<JSONObject> transform(Iterator<JSONObject> iterator) throws ConvirganceException
         {
-            var connection = getConnection();
-            var data = getData();
-            
-            try
-            {
-                connection.setRequestMethod("POST");
-                connection.setDoOutput(true);
-                connection.setDoInput(true);
-                connection.setRequestProperty("Content-Type", "application/json"); 
-                
-                try(var out = connection.getOutputStream())
+            var original = IdentityTransformer.super.transform(iterator);
+
+            return new Iterator<JSONObject>() {
+                @Override
+                public boolean hasNext()
                 {
-                    out.write(data, 0, data.length);
+                    var iterator = (replacement != null) ? replacement : original;
+
+                    return iterator.hasNext();
                 }
-                
-                handleError(connection.getErrorStream());
-                
-                return connection.getInputStream();
-            }
-            catch(IOException e) { throw new ConvirganceException(e); }
+
+                @Override
+                public JSONObject next()
+                {
+                    var iterator = (replacement != null) ? replacement : original;
+
+                    return iterator.next();
+                }
+            };
         }
-        
+
+        @Override
+        public JSONObject transform(JSONObject record) throws ConvirganceException
+        {
+            for(Advisor advisor : advisors) advisor.after(parameters, record);
+
+            if(record.containsKey("message") && record.getJSONObject("message").containsKey("tool_calls"))
+            {
+                replacement = getBinding(parameters, record.getJSONObject("message").getJSONArray("tool_calls")).iterator();
+
+                return replacement.next();
+            }
+
+            return record;
+        }
     }
 }
