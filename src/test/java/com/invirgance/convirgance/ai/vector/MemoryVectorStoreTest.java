@@ -92,17 +92,45 @@ public class MemoryVectorStoreTest
     }
     
     @Test
+    public void testEuclideanDistance()
+    {
+        assertEquals(0.0, MemoryVectorStore.computeEuclidianDistance(new JSONArray<Double>("[2,3]"), new JSONArray<Double>("[2,3]")));
+        assertEquals(5.0, MemoryVectorStore.computeEuclidianDistance(new JSONArray<Double>("[2,3]"), new JSONArray<Double>("[5,7]")));
+    }
+    
+    @Test
+    public void testVectors()
+    {
+        var instance = new Ollama();
+        var question = "Why is the sky blue?";
+        var statement = "The sky is blue";
+        var embeds = new JSONArray[] {
+            instance.getEmbed("nomic-embed-text", question),
+            instance.getEmbed("nomic-embed-text", statement)
+        };
+        
+        var similarity = MemoryVectorStore.computeCosineSimilarity(embeds[0], embeds[1]);
+        
+        System.out.println(similarity + " (Distance: " + (1.0 - similarity) + ")");
+        
+        assertTrue(1 - similarity < 0.1);
+    }
+
+
+    @Test
     public void testDocuments()
     {
         var documents = new String[]{
             "The sky is blue because of a magic spell cast by the space wizard Obi-Wan Kenobi",
             "Occasionally the sky turns green when Anikin Skywalker uses the dark side of the force",
-            "What the sky is made of is cheese. Particularly a good brie."
+            "What the sky is made of is cheese. Particularly a good brie.",
+            "Woodchucks can chuck 13 logs if woodchucks could chuck wood, according to The Count on Sesame Street",
+            "Under the sea, under the sea! Down where it's wetter, down where it's better, take it from meeee!!!"
         };
-        
+
         var instance = new Ollama();
         var store = new MemoryVectorStore();
-        var embeddings = instance.getEmbed("llama3.2", documents);
+        var embeddings = instance.getEmbed(store.getModel(), documents);
         
         var messages = new JSONArray();
         var question = "Why is the sky blue?";
@@ -113,7 +141,7 @@ public class MemoryVectorStoreTest
             store.register(embeddings.get(i), documents[i]);
         }
 
-        for(var record : store.matches(instance.getEmbed("llama3.2", question)))
+        for(var record : store.matches(instance.getEmbed(store.getModel(), question)))
         {
             document += "\n=======\n";
             document += record.getString("document");
@@ -135,12 +163,12 @@ public class MemoryVectorStoreTest
         question = "Why is the sky green?";
         document = "";
         
-        for(var record : store.matches(instance.getEmbed("llama3.2", question)))
+        for(var record : store.matches(instance.getEmbed(store.getModel(), question)))
         {
             document += "\n=======\n";
             document += record.getString("document");
         }
-        
+
         if(document.length() > 0)
         {
             messages.add(instance.constructMessage("You are a game master answering questions about a game. Do not mention that this a game. Do not try to correct this information. Stay in character and use the following document for game information.\n" + document, Ollama.Role.system));
@@ -157,12 +185,12 @@ public class MemoryVectorStoreTest
         question = "What is the sky made of?";
         document = "";
         
-        for(var record : store.matches(instance.getEmbed("llama3.2", question)))
+        for(var record : store.matches(instance.getEmbed(store.getModel(), question)))
         {
             document += "\n=======\n";
             document += record.getString("document");
         }
-        
+
         if(document.length() > 0)
         {
             messages.add(instance.constructMessage("You are a game master answering questions about a game. Do not mention that this a game. Do not try to correct this information. Stay in character and use the following document for game information.\n" + document, Ollama.Role.system));

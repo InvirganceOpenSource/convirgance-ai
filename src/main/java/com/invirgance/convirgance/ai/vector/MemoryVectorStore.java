@@ -26,7 +26,6 @@ package com.invirgance.convirgance.ai.vector;
 import com.invirgance.convirgance.ConvirganceException;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
-import java.util.Comparator;
 
 /**
  *
@@ -36,20 +35,45 @@ public class MemoryVectorStore
 {
     private JSONArray<JSONObject> documents = new JSONArray<>();
     
-    private double distance = 0.7;
+    private double threshold = 0.4;
+    private String model = "nomic-embed-text";
 
     public MemoryVectorStore()
     {
     }
 
-    public double getDistance()
+    /**
+     * To be included in results, the cosine distance must be within this range.
+     * Defaults to 0.4, but can be overridden to be tightened up or relaxed. 0.0
+     * is an exact match, 1.0 is unrelated, and 2.0 is the exact opposite.
+     * 
+     * @return The currently configured threshold
+     */
+    public double getThreshold()
     {
-        return distance;
+        return threshold;
     }
 
-    public void setDistance(double distance)
+    public void setThreshold(double distance)
     {
-        this.distance = distance;
+        this.threshold = distance;
+    }
+
+    /**
+     * This is the model requested to be used when computing the embeddings. While
+     * this store cannot enforce that this model be used, it is strongly 
+     * recommended. Default model is <code>nomic-embed-text</code>.
+     * 
+     * @return 
+     */
+    public String getModel()
+    {
+        return model;
+    }
+
+    public void setModel(String model)
+    {
+        this.model = model;
     }
     
     public void register(JSONArray<Double> embed, String document)
@@ -62,6 +86,13 @@ public class MemoryVectorStore
         this.documents.add(record);
     }
     
+    /**
+     * Returns the closest match or null if all potential matches are outside
+     * the threshold. 
+     * 
+     * @param embed
+     * @return 
+     */
     public String match(JSONArray<Double> embed)
     {
         var matches = matches(embed);
@@ -71,6 +102,13 @@ public class MemoryVectorStore
         return null;
     }
     
+    /**
+     * Returns a list of matches inside the threshold, sorted by distance. Records
+     * returned contain <code>distance</code> for the distance calculation and
+     * <code>document</code> for the text of the document.
+     * @param embed
+     * @return 
+     */
     public JSONArray<JSONObject> matches(JSONArray<Double> embed)
     {
         var matches = new JSONArray<JSONObject>();
@@ -81,7 +119,7 @@ public class MemoryVectorStore
         {
             distance = 1.0 - computeCosineSimilarity(embed, record.getJSONArray("embed"));
 
-            if(distance <= this.distance)
+            if(distance <= this.threshold)
             {
                 match = new JSONObject();
                 
@@ -141,5 +179,23 @@ public class MemoryVectorStore
         var magnitudes = new double[]{ computeMagnitude(a), computeMagnitude(b) };
         
         return (product / (magnitudes[0] * magnitudes[1]));
+    }
+    
+    public static double computeEuclidianDistance(JSONArray<Double> a, JSONArray<Double> b)
+    {
+        var squared = new double[a.size()];
+        var distances = new double[a.size()];
+        var sum = 0.0;
+        
+        if(a.size() != b.size()) throw new ConvirganceException("Vector size mismatches: " + a.size() + " != " + b.size());
+
+        for(int i=0; i<a.size(); i++)
+        {
+            distances[i] = a.getDouble(i) - b.getDouble(i);
+            squared[i] = Math.pow(distances[i], 2);
+            sum += squared[i];
+        }
+        
+        return Math.sqrt(sum);
     }
 }
