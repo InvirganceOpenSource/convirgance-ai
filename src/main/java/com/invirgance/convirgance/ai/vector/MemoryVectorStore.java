@@ -31,7 +31,7 @@ import com.invirgance.convirgance.json.JSONObject;
  *
  * @author jbanes
  */
-public class MemoryVectorStore
+public class MemoryVectorStore implements VectorStore
 {
     private JSONArray<JSONObject> documents = new JSONArray<>();
     
