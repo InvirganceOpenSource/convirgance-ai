@@ -25,6 +25,8 @@ package com.invirgance.convirgance.ai.vector;
 
 import com.invirgance.convirgance.ConvirganceException;
 import com.invirgance.convirgance.json.JSONArray;
+import com.invirgance.convirgance.json.JSONObject;
+import java.util.Comparator;
 
 /**
  *
@@ -32,6 +34,77 @@ import com.invirgance.convirgance.json.JSONArray;
  */
 public class MemoryVectorStore
 {
+    private JSONArray<JSONObject> documents = new JSONArray<>();
+    
+    private double distance = 0.7;
+
+    public MemoryVectorStore()
+    {
+    }
+
+    public double getDistance()
+    {
+        return distance;
+    }
+
+    public void setDistance(double distance)
+    {
+        this.distance = distance;
+    }
+    
+    public void register(JSONArray<Double> embed, String document)
+    {
+        var record = new JSONObject();
+        
+        record.put("embed", embed);
+        record.put("document", document);
+        
+        this.documents.add(record);
+    }
+    
+    public String match(JSONArray<Double> embed)
+    {
+        var matches = matches(embed);
+        
+        if(!matches.isEmpty()) return matches.get(0).getString("document");
+        
+        return null;
+    }
+    
+    public JSONArray<JSONObject> matches(JSONArray<Double> embed)
+    {
+        var matches = new JSONArray<JSONObject>();
+        var match = new JSONObject();
+        var distance = 0.0;
+        
+        for(var record : this.documents)
+        {
+            distance = 1.0 - computeCosineSimilarity(embed, record.getJSONArray("embed"));
+
+            if(distance <= this.distance)
+            {
+                match = new JSONObject();
+                
+                match.put("distance", distance);
+                match.put("document", record.get("document"));
+                matches.add(match);
+            }
+        }
+        
+        matches.sort((JSONObject left, JSONObject right) -> {
+            double leftDistance = left.getDouble("distance");
+            double rightDistance = right.getDouble("distance");
+            double difference = leftDistance - rightDistance;
+            
+            if(difference < 0) return -1;
+            if(difference > 0) return 1;
+            
+            return 0;
+        });
+        
+        return matches;
+    }
+    
     public static double computeDotProduct(JSONArray<Double> a, JSONArray<Double> b)
     {
         var products = new double[a.size()];

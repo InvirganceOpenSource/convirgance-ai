@@ -214,9 +214,9 @@ public class Ollama
         }
     }
     
-    public JSONArray<JSONArray<Double>> getEmbed(String model, String input)
+    public JSONArray<Double> getEmbed(String model, String input)
     {
-        return getEmbed(model, new String[]{input});
+        return getEmbed(model, new String[]{input}).get(0);
     }
     
     public JSONArray<JSONArray<Double>> getEmbed(String model, String... input)

@@ -23,6 +23,7 @@
  */
 package com.invirgance.convirgance.ai.vector;
 
+import com.invirgance.convirgance.ai.engines.Ollama;
 import com.invirgance.convirgance.json.JSONArray;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AfterAll;
@@ -88,5 +89,91 @@ public class MemoryVectorStoreTest
         assertEquals(1.0, MemoryVectorStore.computeCosineSimilarity(new JSONArray("[7,4]"), new JSONArray("[7,4]")), 0.01);
         assertEquals(-0.50769, MemoryVectorStore.computeCosineSimilarity(new JSONArray("[7,4]"), new JSONArray("[-7,4]")), 0.01);
         assertEquals(-1.0, MemoryVectorStore.computeCosineSimilarity(new JSONArray("[7,4]"), new JSONArray("[-7,-4]")), 0.01);
+    }
+    
+    @Test
+    public void testDocuments()
+    {
+        var documents = new String[]{
+            "The sky is blue because of a magic spell cast by the space wizard Obi-Wan Kenobi",
+            "Occasionally the sky turns green when Anikin Skywalker uses the dark side of the force",
+            "What the sky is made of is cheese. Particularly a good brie."
+        };
+        
+        var instance = new Ollama();
+        var store = new MemoryVectorStore();
+        var embeddings = instance.getEmbed("llama3.2", documents);
+        
+        var messages = new JSONArray();
+        var question = "Why is the sky blue?";
+        var document = "";
+        
+        for(int i=0; i<documents.length; i++)
+        {
+            store.register(embeddings.get(i), documents[i]);
+        }
+
+        for(var record : store.matches(instance.getEmbed("llama3.2", question)))
+        {
+            document += "\n=======\n";
+            document += record.getString("document");
+        }
+        
+        if(document.length() > 0)
+        {
+            messages.add(instance.constructMessage("You are a game master answering questions about a game. Do not mention that this a game. Do not try to correct this information. Stay in character and use the following document for game information.\n" + document, Ollama.Role.system));
+        }
+        
+        messages.add(instance.constructMessage(question, Ollama.Role.user));
+        
+        for(var record : instance.chat("llama3.2", messages, false))
+        {
+            System.out.println(record.toString(4));
+            messages.add(record.get("message"));
+        }
+        
+        question = "Why is the sky green?";
+        document = "";
+        
+        for(var record : store.matches(instance.getEmbed("llama3.2", question)))
+        {
+            document += "\n=======\n";
+            document += record.getString("document");
+        }
+        
+        if(document.length() > 0)
+        {
+            messages.add(instance.constructMessage("You are a game master answering questions about a game. Do not mention that this a game. Do not try to correct this information. Stay in character and use the following document for game information.\n" + document, Ollama.Role.system));
+        }
+        
+        messages.add(instance.constructMessage(question, Ollama.Role.user));
+        
+        for(var record : instance.chat("llama3.2", messages, false))
+        {
+            System.out.println(record.toString(4));
+            messages.add(record.get("message"));
+        }
+        
+        question = "What is the sky made of?";
+        document = "";
+        
+        for(var record : store.matches(instance.getEmbed("llama3.2", question)))
+        {
+            document += "\n=======\n";
+            document += record.getString("document");
+        }
+        
+        if(document.length() > 0)
+        {
+            messages.add(instance.constructMessage("You are a game master answering questions about a game. Do not mention that this a game. Do not try to correct this information. Stay in character and use the following document for game information.\n" + document, Ollama.Role.system));
+        }
+        
+        messages.add(instance.constructMessage(question, Ollama.Role.user));
+        
+        for(var record : instance.chat("llama3.2", messages, false))
+        {
+            System.out.println(record.toString(4));
+            messages.add(record.get("message"));
+        }
     }
 }
