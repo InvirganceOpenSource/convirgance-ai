@@ -23,6 +23,7 @@
  */
 package com.invirgance.convirgance.ai.vector;
 
+import com.invirgance.convirgance.ai.Document;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.wiring.annotation.Wiring;
 import java.util.Iterator;

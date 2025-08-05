@@ -23,6 +23,7 @@
  */
 package com.invirgance.convirgance.ai.vector;
 
+import com.invirgance.convirgance.ai.VectorStore;
 import com.invirgance.convirgance.ConvirganceException;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;

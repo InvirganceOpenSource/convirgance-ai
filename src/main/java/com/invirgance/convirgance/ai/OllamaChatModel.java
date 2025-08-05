@@ -25,8 +25,6 @@ package com.invirgance.convirgance.ai;
 
 import com.invirgance.convirgance.ConvirganceException;
 import com.invirgance.convirgance.ai.engines.Ollama;
-import com.invirgance.convirgance.ai.vector.Document;
-import com.invirgance.convirgance.ai.vector.VectorStore;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
 import com.invirgance.convirgance.transform.IdentityTransformer;

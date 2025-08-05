@@ -25,7 +25,6 @@ package com.invirgance.convirgance.ai;
 
 import com.invirgance.convirgance.ai.advisors.OllamaConversationAdvisor;
 import com.invirgance.convirgance.ai.tools.ComputeTool;
-import com.invirgance.convirgance.ai.vector.Document;
 import com.invirgance.convirgance.ai.vector.MemoryVectorStore;
 import com.invirgance.convirgance.ai.vector.StringDocument;
 import com.invirgance.convirgance.json.JSONArray;
