@@ -27,11 +27,13 @@ import com.invirgance.convirgance.ai.VectorStore;
 import com.invirgance.convirgance.ConvirganceException;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
+import com.invirgance.convirgance.wiring.annotation.Wiring;
 
 /**
  *
  * @author jbanes
  */
+@Wiring
 public class MemoryVectorStore implements VectorStore
 {
     private JSONArray<JSONObject> documents = new JSONArray<>();
@@ -67,6 +69,7 @@ public class MemoryVectorStore implements VectorStore
      * 
      * @return 
      */
+    @Override
     public String getModel()
     {
         return model;
@@ -77,6 +80,7 @@ public class MemoryVectorStore implements VectorStore
         this.model = model;
     }
     
+    @Override
     public void register(JSONArray<Double> embed, String document)
     {
         var record = new JSONObject();
@@ -94,6 +98,7 @@ public class MemoryVectorStore implements VectorStore
      * @param embed
      * @return 
      */
+    @Override
     public String match(JSONArray<Double> embed)
     {
         var matches = matches(embed);
@@ -110,6 +115,7 @@ public class MemoryVectorStore implements VectorStore
      * @param embed
      * @return 
      */
+    @Override
     public JSONArray<JSONObject> matches(JSONArray<Double> embed)
     {
         var matches = new JSONArray<JSONObject>();
