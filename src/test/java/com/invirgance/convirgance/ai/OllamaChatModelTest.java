@@ -29,6 +29,8 @@ import com.invirgance.convirgance.ai.vector.MemoryVectorStore;
 import com.invirgance.convirgance.ai.vector.StringDocument;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
+import com.invirgance.convirgance.web.http.HttpRequest;
+import com.invirgance.convirgance.web.servlet.ServiceState;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.AfterAll;
@@ -101,6 +103,8 @@ public class OllamaChatModelTest
         var model = new OllamaChatModel();
         var parameters = new JSONObject();
         
+        ServiceState.set("request", new HttpRequest(new RequestMock()));
+        
         model.setAdvisors(List.of(new OllamaConversationAdvisor()));
         parameters.put("conversation", "1");
         parameters.put("talkLike", "Comedian");
@@ -136,6 +140,8 @@ public class OllamaChatModelTest
         }
         
         System.out.println("\n-----\n");
+        
+        ServiceState.release();
     }
     
     @Test
@@ -143,6 +149,8 @@ public class OllamaChatModelTest
     {
         var model = new OllamaChatModel();
         var parameters = new JSONObject();
+        
+        ServiceState.set("request", new HttpRequest(new RequestMock()));
         
         model.setAdvisors(List.of(new OllamaConversationAdvisor()));
         parameters.put("conversation", "1");
@@ -170,6 +178,8 @@ public class OllamaChatModelTest
         
             System.out.println("\n------\n");
         }
+        
+        ServiceState.release();
     }
     
     @Test
@@ -177,6 +187,8 @@ public class OllamaChatModelTest
     {
         var model = new OllamaChatModel();
         var parameters = new JSONObject();
+        
+        ServiceState.set("request", new HttpRequest(new RequestMock()));
         
         model.setAdvisors(List.of(new OllamaConversationAdvisor()));
         model.setTools(List.of(new ComputeTool()));
@@ -197,6 +209,8 @@ public class OllamaChatModelTest
         {
             System.out.println(record.toString(4));
         }
+        
+        ServiceState.release();
     }
     
     @Test
@@ -234,6 +248,26 @@ public class OllamaChatModelTest
         for(var record : model.getBinding(parameters))
         {
             System.out.println(record.toString(4));
+        }
+    }
+    
+    public class RequestMock
+    {
+        private JSONObject session = new JSONObject();
+        
+        public Object getSession()
+        {
+            return this;
+        }
+        
+        public Object getAttribute(String key)
+        {
+            return session.get(key);
+        }
+        
+        public void setAttribute(String key, Object value)
+        {
+            session.put(key, value);
         }
     }
 }

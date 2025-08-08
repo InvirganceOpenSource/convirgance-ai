@@ -26,6 +26,9 @@ package com.invirgance.convirgance.ai.advisors;
 import com.invirgance.convirgance.ai.Advisor;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
+import com.invirgance.convirgance.web.http.HttpRequest;
+import com.invirgance.convirgance.web.http.Session;
+import com.invirgance.convirgance.web.servlet.ServiceState;
 import com.invirgance.convirgance.wiring.annotation.Wiring;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +40,6 @@ import java.util.Map;
 @Wiring("ollama-conversation")
 public class OllamaConversationAdvisor implements Advisor
 {
-    private Map<String,Context> conversations = new HashMap<>();
     private String key = "conversation";
 
     public String getKey()
@@ -50,15 +52,31 @@ public class OllamaConversationAdvisor implements Advisor
         this.key = key;
     }
     
+    private Context get()
+    {
+        var request = (HttpRequest)ServiceState.get("request");
+        var session = request.getSession();
+        
+        return (Context)session.getAttribute(key);
+    }
+    
+    private void put(Context context)
+    {
+        var request = (HttpRequest)ServiceState.get("request");
+        var session = request.getSession();
+
+        session.setAttribute(key, context);
+    }
+    
     @Override
     public void before(JSONObject parameters, JSONObject message)
     {
-        String id = parameters.getString(key);
-        Context context = (id == null) ? null : conversations.get(id);
+        Context context = get();
         JSONArray messages;
         JSONArray sending;
         
-        if(id == null) return;
+// TODO: Require initialization?
+//        if(context == null) return;
         
         if(message.containsKey("messages"))
         {
@@ -81,7 +99,7 @@ public class OllamaConversationAdvisor implements Advisor
             }
             
             message.put("messages", messages);
-            conversations.put(id, new Context(System.currentTimeMillis(), messages));
+            put(new Context(System.currentTimeMillis(), messages));
         }
         else if(context != null)
         {
@@ -92,21 +110,21 @@ public class OllamaConversationAdvisor implements Advisor
     @Override
     public void after(JSONObject parameters, JSONObject message)
     {
-        String id = parameters.getString(key);
         JSONArray messages;
         JSONObject result;
         JSONObject last;
         Context context;
         
-        if(id == null) return;
-        
         if(message.containsKey("context"))
         {
-            conversations.put(id, new Context(System.currentTimeMillis(), message.get("context")));
+            put(new Context(System.currentTimeMillis(), message.get("context")));
         }
         else if(message.containsKey("message"))
         {
-            context = conversations.get(id);
+            context = get();
+            
+// TODO: Require initialization?
+//        if(context == null) return;
             
             if(context == null)
             {
