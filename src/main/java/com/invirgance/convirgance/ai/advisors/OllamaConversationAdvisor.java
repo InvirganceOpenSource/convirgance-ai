@@ -23,6 +23,7 @@
  */
 package com.invirgance.convirgance.ai.advisors;
 
+import com.invirgance.convirgance.ConvirganceException;
 import com.invirgance.convirgance.ai.Advisor;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
@@ -38,6 +39,7 @@ import com.invirgance.convirgance.wiring.annotation.Wiring;
 public class OllamaConversationAdvisor implements Advisor
 {
     private String sessionKey = "conversation";
+    private boolean requireInitialization = false;
 
     public String getSessionKey()
     {
@@ -47,6 +49,16 @@ public class OllamaConversationAdvisor implements Advisor
     public void setSessionKey(String key)
     {
         this.sessionKey = key;
+    }
+
+    public boolean getRequireInitialization()
+    {
+        return requireInitialization;
+    }
+
+    public void setRequireInitialization(boolean requireInitialization)
+    {
+        this.requireInitialization = requireInitialization;
     }
     
     private JSONArray get()
@@ -72,8 +84,10 @@ public class OllamaConversationAdvisor implements Advisor
         JSONArray messages;
         JSONArray sending;
         
-// TODO: Require initialization?
-//        if(context == null) return;
+        if(context == null && requireInitialization)
+        {
+            throw new ConvirganceException("Conversation has not yet been initialized");
+        }
         
         if(message.containsKey("messages"))
         {
@@ -119,9 +133,6 @@ public class OllamaConversationAdvisor implements Advisor
         else if(message.containsKey("message"))
         {
             context = get();
-            
-// TODO: Require initialization?
-//        if(context == null) return;
             
             if(context == null)
             {
