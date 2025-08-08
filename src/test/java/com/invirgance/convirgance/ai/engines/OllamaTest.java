@@ -119,7 +119,7 @@ public class OllamaTest
     {
         Ollama instance = new Ollama();
         
-        for(var status : instance.pullModel("llama2:7b", true, false))
+        for(var status : instance.pullModel("all-minilm:latest", true, false))
         {
             System.out.println(status.toString(4));
         }
@@ -130,7 +130,7 @@ public class OllamaTest
     {
         Ollama instance = new Ollama();
         
-        assertTrue(instance.deleteModel("llama2:7b"));
+        assertTrue(instance.deleteModel("all-minilm:latest"));
     }
     
     @Test
