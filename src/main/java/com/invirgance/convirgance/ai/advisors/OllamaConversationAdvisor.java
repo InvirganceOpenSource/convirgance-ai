@@ -27,11 +27,8 @@ import com.invirgance.convirgance.ai.Advisor;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
 import com.invirgance.convirgance.web.http.HttpRequest;
-import com.invirgance.convirgance.web.http.Session;
 import com.invirgance.convirgance.web.servlet.ServiceState;
 import com.invirgance.convirgance.wiring.annotation.Wiring;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  *
@@ -40,38 +37,38 @@ import java.util.Map;
 @Wiring("ollama-conversation")
 public class OllamaConversationAdvisor implements Advisor
 {
-    private String key = "conversation";
+    private String sessionKey = "conversation";
 
-    public String getKey()
+    public String getSessionKey()
     {
-        return key;
+        return sessionKey;
     }
 
-    public void setKey(String key)
+    public void setSessionKey(String key)
     {
-        this.key = key;
+        this.sessionKey = key;
     }
     
-    private Context get()
+    private JSONArray get()
     {
         var request = (HttpRequest)ServiceState.get("request");
         var session = request.getSession();
         
-        return (Context)session.getAttribute(key);
+        return (JSONArray)session.getAttribute(sessionKey);
     }
     
-    private void put(Context context)
+    private void put(JSONArray context)
     {
         var request = (HttpRequest)ServiceState.get("request");
         var session = request.getSession();
 
-        session.setAttribute(key, context);
+        session.setAttribute(sessionKey, context);
     }
     
     @Override
     public void before(JSONObject parameters, JSONObject message)
     {
-        Context context = get();
+        JSONArray context = get();
         JSONArray messages;
         JSONArray sending;
         
@@ -80,7 +77,7 @@ public class OllamaConversationAdvisor implements Advisor
         
         if(message.containsKey("messages"))
         {
-            messages = context == null ? new JSONArray() : (JSONArray)context.tokens;
+            messages = context == null ? new JSONArray() : (JSONArray)context;
             sending = message.getJSONArray("messages");
             
             // Sending tool responses. Need to remove the repeating request since we're
@@ -99,11 +96,11 @@ public class OllamaConversationAdvisor implements Advisor
             }
             
             message.put("messages", messages);
-            put(new Context(System.currentTimeMillis(), messages));
+            put(messages);
         }
         else if(context != null)
         {
-            message.put("context", context.tokens);
+            message.put("context", context);
         }
     }
     
@@ -113,11 +110,11 @@ public class OllamaConversationAdvisor implements Advisor
         JSONArray messages;
         JSONObject result;
         JSONObject last;
-        Context context;
+        JSONArray context;
         
         if(message.containsKey("context"))
         {
-            put(new Context(System.currentTimeMillis(), message.get("context")));
+            put(message.getJSONArray("context"));
         }
         else if(message.containsKey("message"))
         {
@@ -134,7 +131,7 @@ public class OllamaConversationAdvisor implements Advisor
             }
             else
             {
-                messages = (JSONArray)context.tokens;
+                messages = context;
                 result = message.getJSONObject("message");
                 last = !messages.isEmpty() ? messages.getJSONObject(messages.size()-1) : null;
                 
@@ -149,6 +146,4 @@ public class OllamaConversationAdvisor implements Advisor
             }
         }
     }
-    
-    private record Context(long time, Object tokens) {}
 }
