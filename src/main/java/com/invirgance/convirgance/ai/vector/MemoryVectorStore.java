@@ -40,6 +40,7 @@ public class MemoryVectorStore implements VectorStore
     
     private double threshold = 0.4;
     private String model = "nomic-embed-text";
+    private int limit = 600;
 
     public MemoryVectorStore()
     {
@@ -79,6 +80,40 @@ public class MemoryVectorStore implements VectorStore
     {
         this.model = model;
     }
+
+    public int getLimit()
+    {
+        return limit;
+    }
+
+    public void setLimit(int limit)
+    {
+        this.limit = limit;
+    }
+    
+    private int countWords(String document)
+    {
+        int count = 0;
+        int characters = 0;
+        
+        for(int i=0; i<document.length(); i++)
+        {
+            if(Character.isWhitespace(document.charAt(i)))
+            {
+                if(characters > 0) count++;
+                
+                characters = 0;
+            }
+            else
+            {
+                characters++;
+            }
+        }
+        
+        if(characters > 0) count++;
+        
+        return count;
+    }
     
     @Override
     public void register(JSONArray<Double> embed, String document)
@@ -87,6 +122,7 @@ public class MemoryVectorStore implements VectorStore
         
         record.put("embed", embed);
         record.put("document", document);
+        record.put("words", countWords(document));
         
         this.documents.add(record);
     }
@@ -121,6 +157,7 @@ public class MemoryVectorStore implements VectorStore
         var matches = new JSONArray<JSONObject>();
         var match = new JSONObject();
         var distance = 0.0;
+        var words = 0;
         
         for(var record : this.documents)
         {
@@ -129,11 +166,15 @@ public class MemoryVectorStore implements VectorStore
             if(distance <= this.threshold)
             {
                 match = new JSONObject();
+                words += record.getInt("words");
                 
                 match.put("distance", distance);
+                match.put("words", record.getInt("words"));
                 match.put("document", record.get("document"));
                 matches.add(match);
             }
+            
+            if(limit > 0 && words > limit) break;
         }
         
         matches.sort((JSONObject left, JSONObject right) -> {
