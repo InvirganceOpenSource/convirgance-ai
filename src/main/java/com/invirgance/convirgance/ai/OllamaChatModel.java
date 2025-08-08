@@ -43,6 +43,7 @@ public class OllamaChatModel implements ChatModel
 {
     private boolean stream = false; // Default to not stream
     private boolean raw = false;
+    private boolean pull = false;
     
     private String model = "llama3.2";
     private String chat;
@@ -58,7 +59,26 @@ public class OllamaChatModel implements ChatModel
     
     private Ollama engine = new Ollama();
     private OllamaToolEncoder encoder;
+    
+    private JSONObject pulled = new JSONObject();
+    
+    private void pullModel(String model)
+    {
+        if(pulled.getBoolean(model, false)) return;
 
+        for(var message : engine.pullModel(model, true, false))
+        {
+            System.out.println(message);
+        }
+
+        pulled.put(model, true);
+    }
+    
+    private void pullModel()
+    {
+        pullModel(model);
+    }
+    
     public Ollama getEngine()
     {
         return engine;
@@ -92,6 +112,21 @@ public class OllamaChatModel implements ChatModel
     public void setModel(String model)
     {
         this.model = model;
+        this.pulled.put(model, false);
+        
+        if(pull) pullModel();
+    }
+
+    public boolean isPull()
+    {
+        return pull;
+    }
+
+    public void setPull(boolean pull)
+    {
+        this.pull = pull;
+        
+        if(pull) pullModel();
     }
 
     public List<Advisor> getAdvisors()
@@ -207,6 +242,8 @@ public class OllamaChatModel implements ChatModel
         JSONArray<Double> embed;
         
         if(store == null || documents == null) return;
+        
+        if(pull) pullModel(store.getModel());
         
         for(Document document : documents)
         {

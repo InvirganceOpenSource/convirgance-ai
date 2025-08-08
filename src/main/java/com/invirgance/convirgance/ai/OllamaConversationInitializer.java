@@ -28,7 +28,6 @@ import com.invirgance.convirgance.ai.engines.Ollama;
 import com.invirgance.convirgance.json.JSONArray;
 import com.invirgance.convirgance.json.JSONObject;
 import com.invirgance.convirgance.transform.IdentityTransformer;
-import com.invirgance.convirgance.web.binding.Binding;
 import com.invirgance.convirgance.web.http.HttpRequest;
 import com.invirgance.convirgance.web.servlet.ServiceState;
 import com.invirgance.convirgance.wiring.annotation.Wiring;
@@ -43,6 +42,7 @@ public class OllamaConversationInitializer implements ChatModel
 {
     private boolean stream = false; // Default to not stream
     private boolean raw = false;
+    private boolean pull = false;
     
     private String model = "llama3.2";
     private String chat;
@@ -54,6 +54,19 @@ public class OllamaConversationInitializer implements ChatModel
     private List<String> optionalSession;
     
     private Ollama engine = new Ollama();
+    private boolean pulled;
+    
+    private void pullModel()
+    {
+        if(pulled) return;
+        
+        for(var message : engine.pullModel(model, true, false))
+        {
+            System.out.println(message);
+        }
+        
+        pulled = true;
+    }
     
     public Ollama getEngine()
     {
@@ -98,6 +111,21 @@ public class OllamaConversationInitializer implements ChatModel
     public void setModel(String model)
     {
         this.model = model;
+        this.pulled = false;
+        
+        if(pull) pullModel();
+    }
+
+    public boolean isPull()
+    {
+        return pull;
+    }
+
+    public void setPull(boolean pull)
+    {
+        this.pull = pull;
+        
+        if(pull) pullModel();
     }
 
     public String getChat()
