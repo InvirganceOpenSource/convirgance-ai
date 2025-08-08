@@ -64,12 +64,10 @@ public class OllamaChatModel implements ChatModel
     
     private void pullModel(String model)
     {
+        if(!pull) return;
         if(pulled.getBoolean(model, false)) return;
 
-        for(var message : engine.pullModel(model, true, false))
-        {
-            System.out.println(message);
-        }
+        engine.ensureModel(model, true);
 
         pulled.put(model, true);
     }
@@ -114,7 +112,7 @@ public class OllamaChatModel implements ChatModel
         this.model = model;
         this.pulled.put(model, false);
         
-        if(pull) pullModel();
+        pullModel();
     }
 
     public boolean isPull()
@@ -126,7 +124,7 @@ public class OllamaChatModel implements ChatModel
     {
         this.pull = pull;
         
-        if(pull) pullModel();
+        pullModel();
     }
 
     public List<Advisor> getAdvisors()
@@ -243,7 +241,7 @@ public class OllamaChatModel implements ChatModel
         
         if(store == null || documents == null) return;
         
-        if(pull) pullModel(store.getModel());
+        pullModel(store.getModel());
         
         for(Document document : documents)
         {

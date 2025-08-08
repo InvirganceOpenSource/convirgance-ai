@@ -192,6 +192,18 @@ public class Ollama
         return input.read(source);
     }
     
+    public void ensureModel(String name, boolean log)
+    {
+        var details = getModelDetails(name);
+        
+        if(!details.containsKey("error")) return;
+        
+        for(var message : pullModel(name, log, false))
+        {
+            if(log) System.err.println(message);
+        }
+    }
+    
     public boolean deleteModel(String name)
     {
         var message = new JSONObject();

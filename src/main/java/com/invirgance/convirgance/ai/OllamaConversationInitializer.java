@@ -58,13 +58,11 @@ public class OllamaConversationInitializer implements ChatModel
     
     private void pullModel()
     {
+        if(!pull) return;
         if(pulled) return;
-        
-        for(var message : engine.pullModel(model, true, false))
-        {
-            System.out.println(message);
-        }
-        
+
+        engine.ensureModel(model, true);
+
         pulled = true;
     }
     
@@ -113,7 +111,7 @@ public class OllamaConversationInitializer implements ChatModel
         this.model = model;
         this.pulled = false;
         
-        if(pull) pullModel();
+        pullModel();
     }
 
     public boolean isPull()
@@ -125,7 +123,7 @@ public class OllamaConversationInitializer implements ChatModel
     {
         this.pull = pull;
         
-        if(pull) pullModel();
+        pullModel();
     }
 
     public String getChat()
