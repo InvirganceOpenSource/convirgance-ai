@@ -45,7 +45,7 @@ import java.util.List;
  */
 public class Ollama
 {
-    private String baseUrl = "http://localhost:11434/api";
+    private String baseUrl = System.getProperty("ollama.base.url", "http://localhost:11434/api");
 
     public Ollama()
     {
