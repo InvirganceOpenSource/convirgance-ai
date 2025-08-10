@@ -171,7 +171,16 @@ public class Ollama
         
         message.put("model", name);
         
-        return input.read(source).iterator().next();
+        try
+        {
+            return input.read(source).iterator().next();
+        }
+        catch(ConvirganceException e)
+        {
+            e.printStackTrace();
+            
+            return null;
+        }
     }
     
     public Iterable<JSONObject> pullModel(String name)
@@ -196,7 +205,7 @@ public class Ollama
     {
         var details = getModelDetails(name);
         
-        if(!details.containsKey("error")) return;
+        if(details != null && !details.containsKey("error")) return;
         
         for(var message : pullModel(name, log, false))
         {
