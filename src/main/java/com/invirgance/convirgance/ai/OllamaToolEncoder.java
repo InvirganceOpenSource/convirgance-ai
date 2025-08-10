@@ -85,6 +85,16 @@ public class OllamaToolEncoder
     
     private Object coerceValue(Class type, Object value)
     {
+        if(type.isEnum())
+        {
+            for(var element : type.getEnumConstants())
+            {
+                if(element.toString().equals(value)) return element;
+            }
+            
+            throw new IllegalArgumentException("Sent value [" + value + "], but unable to find match element in enum " + type.getName());
+        }
+        
         if(type.equals(JSONObject.class) && !(value instanceof JSONObject))
         {
             if(value instanceof Map) return new JSONObject((Map)value);
@@ -129,6 +139,18 @@ public class OllamaToolEncoder
         }
         
         return value;
+    }
+    
+    private JSONArray<String> getEnums(Class clazz)
+    {
+        var enums = new JSONArray<String>();
+        
+        for(var element : clazz.getEnumConstants())
+        {
+            enums.add(element.toString());
+        }
+        
+        return enums;
     }
 
     public JSONArray getDescriptors()
@@ -205,6 +227,7 @@ public class OllamaToolEncoder
             
             if(parameter.getType().equals(String.class)) type = "string";
             else if(parameter.getType().isPrimitive()) type = "number";
+            else if(parameter.getType().isEnum()) type = "string";
             else throw new ConvirganceException("Unrecognized parameter type " + parameter.getType() + " for parameter " + parameter.getName());
             
             toolParam = parameter.getAnnotation(ToolParam.class);
@@ -213,6 +236,8 @@ public class OllamaToolEncoder
             {
                 property.put("description", toolParam.value());
             }
+            
+            if(parameter.getType().isEnum()) property.put("enum", getEnums(parameter.getType()));
             
             property.put("type", type);
             properties.put(parameter.getName(), property);
